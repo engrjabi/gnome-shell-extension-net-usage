@@ -6,31 +6,53 @@ const GLib = imports.gi.GLib
 
 let text, button
 
-function _formatDataUsage(command, keyword) {
-  const netUsageSummary = GLib.spawn_command_line_sync(command)[1].toString()
+function padToTwo(number) {
+  if (number <= 9) {
+    number = ("0" + number)
+  }
+  return number
+}
 
-  if (netUsageSummary) {
-    const regexKeyword = new RegExp(keyword + '.+', "i")
-    const rawMatch = netUsageSummary.match(regexKeyword).toString()
+function padLabels(labelsCollection) {
+  const lengthOfLongestString = Math.max.apply(null, labelsCollection.map(w => w.length));
+  return labelsCollection.map(function(currentLabel) {
+    const spacePaddingNeeded = lengthOfLongestString - currentLabel.length;
+    const padding = Array(spacePaddingNeeded + 2).join(' ');
+    return currentLabel + padding;
+  });
+}
 
-    if (rawMatch) {
-      const fullDataUsage = rawMatch.match(/\|[^\|]+\|(.+)\|/i)[1].toString()
-      return fullDataUsage.slice(0, -3)
+function _formatDataUsage(netUsageSummary, keywordToSearch) {
+  let keyword = keywordToSearch
+
+  if (keywordToSearch === 'month') {
+    const dateNow = new Date()
+    keyword = dateNow.getFullYear() + '-' + padToTwo(dateNow.getMonth() + 1) + '\\s+'
+  }
+
+  if (netUsageSummary && netUsageSummary !== '') {
+    const regexKeyword = new RegExp(keyword + '[^|]+\\|[^|]+\\|([^|]+)\\|', "i")
+    const rawMatch = netUsageSummary.match(regexKeyword)
+    const onlyTheFirstGroup = rawMatch[1].toString()
+
+    if (onlyTheFirstGroup && onlyTheFirstGroup !== '') {
+      return onlyTheFirstGroup.slice(0, -3)
     }
   }
 
   return ''
 }
 
-function _netUsage(type) {
-  // vnstat -i wlp3s0 -m | grep "`date +"%b '%y"`" FOR MONTH
+function _netUsage() {
+  const interfaceNet = 'wlp3s0' // TODO: Should be able to change on extension settings
+  const command = 'vnstat -i ' + interfaceNet
+  const netUsageSummary = GLib.spawn_command_line_sync(command)[1].toString()
   // Collection
-  const mapping = {
-    today: _formatDataUsage('vnstat -i wlp3s0', 'today'),
-    yesterday: _formatDataUsage('vnstat -i wlp3s0', 'yesterday')
+  return {
+    today: _formatDataUsage(netUsageSummary, 'today'),
+    yesterday: _formatDataUsage(netUsageSummary, 'yesterday'),
+    month: _formatDataUsage(netUsageSummary, 'month')
   }
-
-  return mapping[type]
 }
 
 function _hideFullSummary() {
@@ -40,7 +62,10 @@ function _hideFullSummary() {
 
 function _showFullSummary() {
   if (!text) {
-    text = new St.Label({style_class: 'full-data-summary', text: 'Full data usage summary will be displayed here soon'})
+    let netUsage = _netUsage()
+    let labels = padLabels(['Today', 'Yesterday', 'This Month']);
+    let displayMessage = `${labels[0]} ${netUsage.today} \n${labels[1]} ${netUsage.yesterday} \n${labels[2]} ${netUsage.month}`
+    text = new St.Label({style_class: 'full-data-summary', text: displayMessage})
     Main.uiGroup.add_actor(text)
   }
 
@@ -48,8 +73,7 @@ function _showFullSummary() {
 
   let monitor = Main.layoutManager.primaryMonitor
 
-  text.set_position(monitor.x + Math.floor(monitor.width / 2 - text.width / 2),
-    monitor.y + Math.floor(monitor.height / 2 - text.height / 2))
+  text.set_position(monitor.x + Math.floor(monitor.width - (text.width + 40)), 40)
 
   Tweener.addTween(text,
     {
@@ -77,8 +101,8 @@ function init() {
   })
 
   Mainloop.timeout_add(1000, function () {
-    let displayLabel = _netUsage('yesterday') + "|Y" + _netUsage('today') + "|T"
-    let label = new St.Label({text: displayLabel})
+    let netUsageToday = _netUsage().today
+    let label = new St.Label({text: netUsageToday})
     button.set_child(label)
     return true
   })
