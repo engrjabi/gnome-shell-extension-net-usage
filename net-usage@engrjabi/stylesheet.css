@@ -1,0 +1,9 @@
+
+.full-data-summary {
+    font-size: 15px;
+    font-weight: bold;
+    color: #ffffff;
+    background-color: rgba(10,10,10,0.7);
+    border-radius: 5px;
+    padding: .5em;
+}
