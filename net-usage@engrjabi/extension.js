@@ -4,7 +4,7 @@ const Tweener = imports.ui.tweener
 const Mainloop = imports.mainloop
 const GLib = imports.gi.GLib
 
-let text, button
+let text, button, timerId
 
 function padToTwo(number) {
   if (number <= 9) {
@@ -14,12 +14,18 @@ function padToTwo(number) {
 }
 
 function padLabels(labelsCollection) {
-  const lengthOfLongestString = Math.max.apply(null, labelsCollection.map(w => w.length));
-  return labelsCollection.map(function(currentLabel) {
-    const spacePaddingNeeded = lengthOfLongestString - currentLabel.length;
-    const padding = Array(spacePaddingNeeded + 2).join(' ');
-    return currentLabel + padding;
-  });
+  const lengthOfLongestString = Math.max.apply(null, labelsCollection.map(w => w.length))
+  return labelsCollection.map(function (currentLabel) {
+    const spacePaddingNeeded = lengthOfLongestString - currentLabel.length
+    const padding = Array(spacePaddingNeeded + 2).join(' ')
+    return currentLabel + padding
+  })
+}
+
+function _updateLabel() {
+  let netUsageToday = _netUsage().today
+  let label = new St.Label({text: netUsageToday})
+  button.set_child(label)
 }
 
 function _formatDataUsage(netUsageSummary, keywordToSearch) {
@@ -62,8 +68,9 @@ function _hideFullSummary() {
 
 function _showFullSummary() {
   if (!text) {
+    _updateLabel()
     let netUsage = _netUsage()
-    let labels = padLabels(['Today', 'Yesterday', 'This Month']);
+    let labels = padLabels(['Today', 'Yesterday', 'This Month'])
     let displayMessage = `${labels[0]} ${netUsage.today} \n${labels[1]} ${netUsage.yesterday} \n${labels[2]} ${netUsage.month}`
     text = new St.Label({style_class: 'full-data-summary', text: displayMessage})
     Main.uiGroup.add_actor(text)
@@ -95,17 +102,7 @@ function init() {
     track_hover: true
   })
 
-  let icon = new St.Icon({
-    icon_name: 'system-run-symbolic',
-    style_class: 'system-status-icon'
-  })
-
-  Mainloop.timeout_add(1000, function () {
-    let netUsageToday = _netUsage().today
-    let label = new St.Label({text: netUsageToday})
-    button.set_child(label)
-    return true
-  })
+  timerId = Mainloop.timeout_add(5000, _updateLabel)
 
   button.connect('button-press-event', _showFullSummary)
 }
@@ -115,5 +112,6 @@ function enable() {
 }
 
 function disable() {
+  Mainloop.source_remove(timerId)
   Main.panel._rightBox.remove_child(button)
 }
