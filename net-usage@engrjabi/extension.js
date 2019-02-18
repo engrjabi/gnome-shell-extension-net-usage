@@ -39,14 +39,17 @@ function _formatDataUsage(netUsageSummary, keywordToSearch) {
   if (netUsageSummary && netUsageSummary !== '') {
     const regexKeyword = new RegExp(keyword + '[^|]+\\|[^|]+\\|([^|]+)\\|', "i")
     const rawMatch = netUsageSummary.match(regexKeyword)
-    const onlyTheFirstGroup = rawMatch[1].toString()
 
-    if (onlyTheFirstGroup && onlyTheFirstGroup !== '') {
-      return onlyTheFirstGroup.slice(0, -3)
+    if (rawMatch) {
+      const onlyTheFirstGroup = rawMatch[1].toString()
+
+      if (onlyTheFirstGroup && onlyTheFirstGroup !== '') {
+        return onlyTheFirstGroup.slice(0, -3)
+      }
     }
   }
 
-  return ''
+  return '0 K'
 }
 
 function _netUsage() {
@@ -102,6 +105,7 @@ function init() {
     track_hover: true
   })
 
+  _updateLabel()
   timerId = Mainloop.timeout_add(5000, _updateLabel)
 
   button.connect('button-press-event', _showFullSummary)
