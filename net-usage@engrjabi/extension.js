@@ -23,13 +23,15 @@ function padLabels(labelsCollection) {
 }
 
 function _updateLabel() {
-  let netUsageToday = _netUsage().today
+  let netUsageToday = _netUsage().today.trim()
   let label = new St.Label({text: netUsageToday})
   button.set_child(label)
+  return true
 }
 
 function _formatDataUsage(netUsageSummary, keywordToSearch) {
   let keyword = keywordToSearch
+  let finalFormattedDataToReturn = '  000.00 K'
 
   if (keywordToSearch === 'month') {
     const dateNow = new Date()
@@ -44,12 +46,15 @@ function _formatDataUsage(netUsageSummary, keywordToSearch) {
       const onlyTheFirstGroup = rawMatch[1].toString()
 
       if (onlyTheFirstGroup && onlyTheFirstGroup !== '') {
-        return onlyTheFirstGroup.slice(0, -3)
+        const shorterDataLabel = onlyTheFirstGroup.slice(0, -3)
+        if (shorterDataLabel.trim() !== '0') {
+          finalFormattedDataToReturn = shorterDataLabel
+        }
       }
     }
   }
 
-  return '0 K'
+  return finalFormattedDataToReturn
 }
 
 function _netUsage() {
@@ -106,7 +111,7 @@ function init() {
   })
 
   _updateLabel()
-  timerId = Mainloop.timeout_add(5000, _updateLabel)
+  timerId = Mainloop.timeout_add(1000, _updateLabel)
 
   button.connect('button-press-event', _showFullSummary)
 }
